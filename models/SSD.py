@@ -22,7 +22,7 @@ class L2Norm(nn.Module):
         nn.init.constant(self.weight, scale)
 
     def forward(self, x):
-        x /= (x.pow(2).sum(dim=1, keepdim=True).sqrt() + 1e-10)
+        x /= (x.clone().pow(2).sum(dim=1, keepdim=True).sqrt() + 1e-10)  #change add x.clone()
         out = self.weight.unsqueeze(0).unsqueeze(2).unsqueeze(3).expand_as(x) * x
         return out
 
@@ -78,7 +78,7 @@ class SSD300(nn.Module):
         for name, m in itertools.chain(self.Base._modules.items(), 
                                        self.Extra._modules.items()):
             if isinstance(m, nn.Conv2d):
-                x = F.relu(m(x), inplace=True)
+                x = F.relu(m(x), inplace=False)  # change 
             else:
                 x = m(x)
 

@@ -1,0 +1,12 @@
+data/*
+!data/config.py
+!data/VisDrone.py
+!data/divide.py
+!data/Divide.py
+!data/VisDronePatch.py
+output_VisDrone.txt
+weights/
+tmp/
+divideImage/
+InputImages/
+*.txt
