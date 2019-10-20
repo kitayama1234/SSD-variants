@@ -6,7 +6,9 @@ data/*
 !data/VisDronePatch.py
 output_VisDrone.txt
 weights/
+runs/
 tmp/
 divideImage/
 InputImages/
 *.txt
+*.out

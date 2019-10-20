@@ -27,6 +27,8 @@ from multibox import MultiBox
 from tensorboardX import SummaryWriter
 summary = SummaryWriter()
 
+#from config import config
+
 # Setup
 parser = argparse.ArgumentParser(description='PyTorch SSD variants implementation')
 parser.add_argument('--checkpoint', help='resume from checkpoint', default='')
@@ -56,14 +58,19 @@ if opt.cuda:
     torch.cuda.manual_seed_all(opt.seed)
 
 
-# model
-model = SSD300(VOC.N_CLASSES)
-cfg = model.config
+# model multi-GPUs
+if opt.cuda:
+    model = torch.nn.DataParallel(SSD300(VOC.N_CLASSES))
+else:
+    model = SSD300(VOC.N_CLASSES)
+
+cfg = model.module.config
+#cfg = config.config
 
 if opt.checkpoint:
     model.load_state_dict(torch.load(opt.checkpoint))
 else:
-    model.init_parameters(opt.backbone)
+    model.module.init_parameters(opt.backbone)
 
 encoder = MultiBox(cfg)
 criterion = MultiBoxLoss()
@@ -148,13 +155,20 @@ def train():
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-
+     
+            output_file = open('voc.txt', 'a')
+            recordFile = open('vocRecord.txt', 'a')
             if iteration % 10 == 0:
-                print('iter ' + repr(iteration) + ' || Loss: %.4f ||' % (loss.data.item()), end='\n')#, file=output_file)
-                print('Confidence loss: {:.2f}, Location loss: {:.2f}'.format(conf_loss.data.item(), loc_loss.data.item()))#, file=output_file)
+                print('iter ' + repr(iteration) + ' || Loss: %.4f ||' % (loss.data.item()), end='\n', file=output_file)
+                print('Confidence loss: {:.2f}, Location loss: {:.2f}'.format(conf_loss.data.item(), loc_loss.data.item()), file=output_file)
+                print('{},{},{},{}'.format(repr(iteration), loss.data.item(), conf_loss.data.item(), loc_loss.data.item()), file=recordFile)
 
 
-                '''
+            output_file.close()
+            recordFile.close()
+
+
+            '''
                 summary.add_scalar('loss/loc_loss', loc_loss.item(), iteration)
                 summary.add_scalar('loss/conf_loss', conf_loss.item(), iteration)
                 summary.add_scalars('loss/loss', {"loc_loss": loc_loss.item(),
