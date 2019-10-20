@@ -5,7 +5,7 @@ data/*
 !data/Divide.py
 !data/VisDronePatch.py
 output_VisDrone.txt
-run/
+runs/
 weights/
 tmp/
 divideImage/
