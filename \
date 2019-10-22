@@ -163,17 +163,12 @@ def train():
             loss.backward()
             optimizer.step()
 
-            output = open('VisDrone.txt', 'a')
-            record = open('VisDroneRecord.txt', 'a')
             if iteration % 10 == 0:
-                print('iter ' + repr(iteration) + ' || Loss: %.4f ||' % (loss.data.item()), end='\n', file=output)
-                print('Confidence loss: {:.2f}, Location loss: {:.2f}'.format(conf_loss.data.item(), loc_loss.data.item()), file=output)
-                print('{},{},{},{}'.format(repr(iteration), loss.data.item(), conf_loss.data.item(), loc_loss.data.item(), end='\n'), file=record)
-            output.close()
-            record.close()
+                print('iter ' + repr(iteration) + ' || Loss: %.4f ||' % (loss.data.item()), end='\n')#, file=output_file)
+                print('Confidence loss: {:.2f}, Location loss: {:.2f}'.format(conf_loss.data.item(), loc_loss.data.item()))#, file=output_file)
 
 
-            '''
+                '''
                 summary.add_scalar('loss/loc_loss', loc_loss.item(), iteration)
                 summary.add_scalar('loss/conf_loss', conf_loss.item(), iteration)
                 summary.add_scalars('loss/loss', {"loc_loss": loc_loss.item(),
@@ -290,5 +285,4 @@ if __name__ == '__main__':
     elif opt.demo:
         demo()
     else:
-        with torch.autograd.set_detect_anomaly(True):
-            train()
+        train()

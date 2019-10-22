@@ -78,7 +78,7 @@ class SSD300(nn.Module):
         for name, m in itertools.chain(self.Base._modules.items(), 
                                        self.Extra._modules.items()):
             if isinstance(m, nn.Conv2d):
-                x = F.relu(m(x), inplace=False)  # change 
+                x = F.relu(m(x), inplace=False)  #change False
             else:
                 x = m(x)
 
