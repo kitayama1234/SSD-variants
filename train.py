@@ -63,13 +63,20 @@ if opt.cuda:
 
 
 # model
-model = SSD300(VOC.N_CLASSES)
-cfg = model.config
-
-if opt.checkpoint:
-    model.load_state_dict(torch.load(opt.checkpoint))
+if opt.cuda:
+    model = torch.nn.DataParallel(SSD300(VOC.N_CLASSES))
+    cfg = model.module.config
+    if opt.checkpoint:
+        model.load_state_dict(torch.load(opt.checkpoint))
+    else:
+        model.module.init_parameters(opt.backbone)
 else:
-    model.init_parameters(opt.backbone)
+    model = SSD300(VOC.N_CLASSES)
+    cfg = model.config
+    if opt.checkpoint:
+        model.load_state_dict(torch.load(opt.checkpoint))
+    else:
+        model.init_parameters(opt.backbone)
 
 encoder = MultiBox(cfg)
 criterion = MultiBoxLoss()
@@ -137,8 +144,12 @@ def train():
             transform=transform,
             target_transform=target_transform)
     elif opt.dataset == 'VisDrone':
-        datasetPath = '/home/yosunpeng/github/DetectionDataset/VisDrone/VisDrone2019-DET-train'
-        dataset =  VisDrone(rootPath=datasetPath, model=model, transform=transform, target_transform=target_transform) 
+        #datasetPath = '/home/yosunpeng/github/DetectionDataset/VisDrone/VisDrone2019-DET-train'
+        datasetPath = '/media/yosunpeng/2TB/sunpeng/DetectionDataset/VisDrone/VisDrone2019-DET-train'
+
+        dataset =  VisDrone(rootPath=datasetPath, 
+                   transform=transform, 
+                   target_transform=target_transform) 
 
 
 
@@ -185,7 +196,7 @@ def train():
                 print('Save state, iter: {}, Loss:{}'.format(iteration, loss.item()))
                 if not os.path.isdir('weights'):
                         os.mkdir('weights')
-                torch.save(model.state_dict(), 'weights/{}_0712_{}.pth'.format(cfg.get('name', 'SSD'), iteration))
+                torch.save(model.state_dict(), 'weights/{}_{}_{}.pth'.format(cfg.get('name', 'SSD'), opt.dataset,iteration))
             
             iteration += 1
             if iteration > max_iter:
@@ -198,7 +209,9 @@ def train():
 def test():
     PRNG = RandomState()
 
-    dataset = VOCDetection(
+
+    if opt.dataset == 'VOC':
+        dataset = VOCDetection(
             root=opt.voc_root, 
             image_set=[('2007', 'test')],
             transform=Compose([
@@ -209,6 +222,12 @@ def test():
                 [RGB2BGR()],
                 [ToTensor()]]),
             target_transform=None)
+ 
+    elif opt.dataset == 'VisDrone':
+        #datasetPath = '/home/yosunpeng/github/DetectionDataset/VisDrone/VisDrone2019-DET-train'
+        datasetPath = '/media/yosunpeng/2TB/sunpeng/DetectionDataset/VisDrone/VisDrone2019-DET-val'
+        dataset =  VisDrone(rootPath=datasetPath, transform=None, target_transform=None) 
+
     print(len(dataset))
 
     pred_bboxes, pred_labels, pred_scores, gt_bboxes, gt_labels = [], [], [], [], []
@@ -218,7 +237,8 @@ def test():
         gt_bboxes.append(loc)
         gt_labels.append(label)
 
-        input = Variable(img.unsqueeze(0), volatile=True)
+        with torch.no_grad():
+            input = Variable(img.unsqueeze(0))
         if opt.cuda:
             input = input.cuda()
 
@@ -290,5 +310,8 @@ if __name__ == '__main__':
     elif opt.demo:
         demo()
     else:
+        '''
         with torch.autograd.set_detect_anomaly(True):
             train()
+        '''
+        train()

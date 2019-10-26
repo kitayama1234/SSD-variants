@@ -9,6 +9,7 @@ import sys
 import xml.etree.ElementTree as ET 
 
 import torch.utils.data
+import time
 
 
 
@@ -150,14 +151,20 @@ class VOCDetection(torch.utils.data.Dataset):
         img_id = self.ids[index]
 
         img = cv2.imread(self._imgpath % img_id)[:, :, ::-1]
+        #print(img.shape)
         bboxes, labels = self.parse_annotation(self._annopath % img_id)
+        #print(img.shape, bboxes.shape, labels.shape)
 
+        #t0 = time.time()
         if self.transform is not None:
             img, bboxes = self.transform(img, bboxes)
+        #t1 = time.time()
 
         bboxes, labels = self.filter(img, bboxes, labels)
         if self.target_transform is not None:
             bboxes, labels = self.target_transform(bboxes, labels)
+        #delta = t1 - t0
+        #print('sec', delta%60)
         return img, bboxes, labels
 
 

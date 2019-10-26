@@ -7,13 +7,13 @@ import matplotlib.pyplot as plt
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms, utils
 import cv2
+import time
 import pdb
 
 
 class VisDrone(Dataset):
-    def __init__(self, rootPath, model, transform=None, target_transform=None):
+    def __init__(self, rootPath, transform=None, target_transform=None):
         self.rootPath = rootPath
-        self.model = model
         self.transform = transform
         self.target_transform = target_transform
         self.name = 'VisDrone'
@@ -33,12 +33,10 @@ class VisDrone(Dataset):
         imgName = baseName + '.jpg'
         imgPath = os.path.join(self.basePath, 'images', imgName)
         img = cv2.imread(imgPath)
-        try: 
-            hw= img.shape #NOTE cv2 image shape (hight, width)
-            h = hw[0]
-            w = hw[1]
-        except AttributeError:
-            print(imgName)
+        #print(img.shape)
+        hw= img.shape #NOTE cv2 image shape (hight, width)
+        h = hw[0]
+        w = hw[1]
 
 
         # load box labels
@@ -59,14 +57,25 @@ class VisDrone(Dataset):
         labels[:, 3] = labels[:, 1] + labels[:, 3]
         bboxes = labels[:, :4]
         labels = labels[:, 5]
+        
 
+        #t0 = time.time()
         if self.transform is not None:
             img, bboxes = self.transform(img, bboxes) 
+        #t1 = time.time()
         
         bboxes, labels = self.filter(img, bboxes, labels)
 
         if self.target_transform:
             bboxes, labels = self.target_transform(bboxes, labels)
+        if self.transform is None:
+            img = torch.from_numpy(img.astype('float32')).permute(2, 0, 1)
+            bboxes = torch.from_numpy(bboxes)
+            labels = torch.from_numpy(labels)
+
+        #delta = t1 - t0
+        #print('min{},sec{}'.format((delta//60%60), (delta%60)))
+
         return img, bboxes, labels
 
     def filter(self, img, boxes, labels):

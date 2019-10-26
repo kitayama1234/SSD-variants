@@ -11,3 +11,4 @@ tmp/
 divideImage/
 InputImages/
 *.txt
+nohup.out
