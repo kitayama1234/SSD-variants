@@ -13,7 +13,7 @@ class L2Norm(nn.Module):
     def __init__(self, n_channels, scale=20):
         super(L2Norm, self).__init__()
         self.scale = nn.Parameter(torch.FloatTensor(np.ones((1, n_channels, 1, 1))))
-        nn.init.constant(self.scale, scale)
+        nn.init.constant_(self.scale, scale)
 
     def forward(self, x):   
         x = x * x.pow(2).sum(1, keepdim=True).clamp(min=1e-10).rsqrt()
@@ -44,7 +44,7 @@ class DSOD300(nn.Module):
         #'max_iter': 100000,
     }
 
-    def __init__(self, n_classes, growth_rate=48):
+    def __init__(self, n_classes, growth_rate=48, input_channels=3):
         super(DSOD300, self).__init__()
         self.n_classes = n_classes
 
@@ -54,7 +54,7 @@ class DSOD300(nn.Module):
 
         # backbone
         self.Stem = nn.Sequential(
-            conv_bn_relu(3, 64, 3, stride=2, padding=1),
+            conv_bn_relu(input_channels, 64, 3, stride=2, padding=1),
             conv_bn_relu(64, 64, 3, padding=1),
             conv_bn_relu(64, 128, 3, padding=1),
             nn.MaxPool2d(2, ceil_mode=True))
@@ -130,7 +130,7 @@ class DSOD300(nn.Module):
 
     def weights_init(self, m):
         if isinstance(m, nn.Conv2d):
-            nn.init.xavier_uniform(m.weight.data)
+            nn.init.xavier_uniform_(m.weight.data)
             if m.bias is not None:
                 m.bias.data.zero_()
         elif isinstance(m, nn.BatchNorm2d):
@@ -148,7 +148,8 @@ def bn_relu_conv(in_channels, out_channels, kernel_size, stride=1, padding=0):
     return nn.Sequential(
         nn.BatchNorm2d(in_channels),
         nn.ReLU(inplace=True),
-        nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding, bias=False))
+        nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding, bias=False)
+    )
 
 def conv_bn_relu(in_channels, out_channels, kernel_size=1, stride=1, padding=0):
     return nn.Sequential(
@@ -164,11 +165,11 @@ class DenseBlock(nn.Module):
         super(DenseBlock, self).__init__()
 
         class DenseLayer(nn.Module):
-            def __init__(self, in_channels, growth_rate, widen=1, dropout=0.):
+            def __init__(self, in_channels, growth_rate, bottleneck_output=192, dropout=0.):
                 super(DenseLayer, self).__init__()
 
-                self.conv1 = bn_relu_conv(in_channels, growth_rate * widen, 1)
-                self.conv2 = bn_relu_conv(growth_rate * widen, growth_rate, 3, padding=1)
+                self.conv1 = bn_relu_conv(in_channels, bottleneck_output, 1)
+                self.conv2 = bn_relu_conv(bottleneck_output, growth_rate, 3, padding=1)
                 self.dropout = dropout
 
             def forward(self, x):
@@ -204,12 +205,15 @@ class Transition(nn.Module):
 
 # Learning Half and Reusing Half
 class LHRH(nn.Module):
-    def __init__(self, in_channels, out_channels, widen=1, dropout=0., ceil_mode=False):
+    def __init__(self, in_channels, out_channels, dropout=0., ceil_mode=False):
         super(LHRH, self).__init__()
 
-        self.conv1_1 = bn_relu_conv(in_channels, int(out_channels / 2 * widen), 1)
-        self.conv1_2 = bn_relu_conv(int(out_channels / 2 * widen), out_channels // 2, 3, 
+        # half: learning layer
+        self.conv1_1 = bn_relu_conv(in_channels, in_channels // 2, 1)
+        self.conv1_2 = bn_relu_conv(in_channels // 2, out_channels // 2, 3,
                                     padding=1 * ceil_mode, stride=2)
+
+        # half: max pooling layer
         self.pool2 = nn.MaxPool2d(2, ceil_mode=ceil_mode)
         self.conv2 = bn_relu_conv(in_channels, out_channels // 2, 1)
         self.dropout = dropout
@@ -221,3 +225,8 @@ class LHRH(nn.Module):
             out1 = F.dropout(out1, p=self.dropout, training=self.training)
             out2 = F.dropout(out2, p=self.dropout, training=self.training)
         return torch.cat([out1, out2], 1)
+
+
+
+
+
